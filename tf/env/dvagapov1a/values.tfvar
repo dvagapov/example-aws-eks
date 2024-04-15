@@ -1,0 +1,10 @@
+region = "eu-central-1"
+cluster_name = "dvagapov1a"
+cluster_version = "1.29"
+vpc_cidr = "10.0.0.0/18"
+
+tags = {
+	owner = "dvagapov"
+	region = "eu-central-1"
+	k8s_version = "1.29"
+}
