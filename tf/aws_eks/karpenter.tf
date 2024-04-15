@@ -49,6 +49,14 @@ resource "helm_release" "karpenter" {
         operator: Equal
         value: fargate
         effect: "NoSchedule"
+    controller:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 500Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
     EOT
   ]
 }

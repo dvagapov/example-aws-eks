@@ -73,3 +73,122 @@ Will be created:
     - NodeClass
     - NodePool
 
+### Verify EKS
+- Get EKS kubeconfig of our cluster and set k8s context to `dvagapov1a`
+```
+aws eks update-kubeconfig --name dvagapov1a --region eu-central-1 --alias dvagapov1a
+```
+- Check ns
+```
+kubectl get ns
+NAME              STATUS   AGE
+default           Active   10h
+karpenter         Active   10h
+kube-node-lease   Active   10h
+kube-public       Active   10h
+kube-system       Active   10h
+```
+- Check if Karpenter UP
+```
+kubectl get all -n karpenter      
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/karpenter-6888dcc847-8bmhs   1/1     Running   0          2m10s
+pod/karpenter-6888dcc847-8px8g   1/1     Running   0          2m10s
+
+NAME                TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/karpenter   ClusterIP   172.20.252.177   <none>        8000/TCP   10h
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/karpenter   2/2     2            2           10h
+
+NAME                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/karpenter-6888dcc847   2         2         2       2m11s
+```
+- To be able to use Spot nodes need to create `linked-role`
+```
+aws iam create-service-linked-role --aws-service-name spot.amazonaws.com || true
+{
+    "Role": {
+        "Path": "/aws-service-role/spot.amazonaws.com/",
+        "RoleName": "AWSServiceRoleForEC2Spot",
+        "RoleId": "AROAU6GDVL4TREEDK5M3H",
+        "Arn": "arn:aws:iam::339712761639:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot",
+        "CreateDate": "2024-04-15T16:09:32Z",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": [
+                        "sts:AssumeRole"
+                    ],
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": [
+                            "spot.amazonaws.com"
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
+```
+
+## Deploy addons (DD agent)
+For deploying k8s application we going to use TF helm and kubernetes providers.
+The k8s credentials are using from `~/.kube/config`
+
+Now deploy addons
+``
+cd ./tf/addons
+
+// for do not store sensitive data in github
+export TF_VAR_datadog_api_key="<Your-API-Key>"
+
+terraform init -backend-config="../env/dvagapov1a/backend-addons.hcl"
+terraform plan 
+terraform apply -auto-approve
+```
+
+Will be created:
+- DaemonSet DD-agent
+- Deploy DD-cluster-agent
+
+### Verify DataDog
+Karpenter should create new nodes for Datadog agent.
+```
+kubectl get nodeclaims -owide
+NAME            TYPE         ZONE            NODE                                          READY   AGE     CAPACITY   NODEPOOL   NODECLASS
+default-bq2dz   m6g.xlarge   eu-central-1b   ip-10-0-6-187.eu-central-1.compute.internal   True    9m49s   spot       default    default
+```
+
+Let's check the DataDog namespace
+```
+k get all -n datadog
+NAME                                               READY   STATUS    RESTARTS   AGE
+pod/datadog-agent-cluster-agent-679dfdc799-cbpjc   1/1     Running   0          38m
+pod/datadog-agent-sxdrg                            3/3     Running   0          3m53s
+
+NAME                                                       TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
+service/datadog-agent                                      ClusterIP   172.20.200.141   <none>        8125/UDP,8126/TCP   38m
+service/datadog-agent-cluster-agent                        ClusterIP   172.20.23.159    <none>        5005/TCP            38m
+service/datadog-agent-cluster-agent-admission-controller   ClusterIP   172.20.144.58    <none>        443/TCP             38m
+service/datadog-agent-cluster-agent-metrics-api            ClusterIP   172.20.13.107    <none>        8443/TCP            38m
+
+NAME                           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+daemonset.apps/datadog-agent   1         1         1       1            1           kubernetes.io/os=linux   38m
+
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/datadog-agent-cluster-agent   1/1     1            1           38m
+
+NAME                                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/datadog-agent-cluster-agent-679dfdc799   1         1         1       38m
+```
+
+For verify DataDog agent DS
+```
+kubectl exec ds/datadog-agent -n datadog -- agent status
+...
+```
+
+`agent status` returns detailed info. Need to check if there are no errors and logs/metrics are processed well.
