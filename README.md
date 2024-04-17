@@ -218,3 +218,49 @@ kubectl get pods -n bastian
 NAME                     READY   STATUS    RESTARTS   AGE
 dummy-597ff9bfb4-2q2s6   1/1     Running   0          14m
 ```
+
+In application's pods added Datadog annotations for parse metrics and push them to Datadog server. I use `K8s annotations AD v1` format.
+```
+ad.datadoghq.com/${local.name}.check_names: '["openmetrics"]'
+ad.datadoghq.com/${local.name}.init_configs: '[{}]'
+ad.datadoghq.com/${local.name}.instances: |-
+    [{
+    "prometheus_url": "http://%%host%%:${local.ports["metrics"]}/metrics",
+    "namespace": "${local.name}",
+    "metrics": [ "*" ],
+    "type_overrides": {
+        "ssl_days_to_expire_total":"gauge",
+        "ssl_days_to_expire_created":"gauge" 
+    },
+    "send_distribution_buckets": true
+    }]
+```
+Have to override `ssl_days_to_expire_*` metrics type, because [new ver of Openmetrics](https://github.com/DataDog/integrations-core/tree/master/openmetrics#configuration) not supported Counter type of metrics with Suffixes like `_total`, `_created` -> Better fix metrics names in application.
+
+For verify openmetrics is successfully pushed to Datadog server
+```
+k exec -it -n datadog -c agent datadog-agent-85tf7 -- agent check openmetrics
+...
+=== Series ===
+[
+  {
+    "metric": "dummy.ssl_days_to_expire_created",
+...
+  {
+    "metric": "dummy.ssl_days_to_expire_total",
+...
+
+Running Checks
+  ==============
+    
+    openmetrics (4.2.0)
+    -------------------
+      Instance ID: openmetrics:dummy:f45ee8e3426fbab2 [OK]
+      Configuration Source: container:containerd://547e0fa85d6dc858c24222ae3a4b96e21fd8e33d8f7507343f502d29f8099bd1
+      Total Runs: 1
+      Metric Samples: Last Run: 35, Total: 35
+...
+```
+There `datadog-agent-85tf7` is Datadog DS agent working on same node with our application `dummy`
+
+## 

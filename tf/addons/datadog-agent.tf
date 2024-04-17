@@ -20,6 +20,7 @@ resource "helm_release" "datadog_agent" {
       collectEvents: true
       clusterAgent:
         enabled: true
+        useHostNetwork: true
         metricsProvider:
           enabled: false
       kubeStateMetricsCore:

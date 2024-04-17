@@ -34,7 +34,12 @@ resource "kubectl_manifest" "dummy_app" {
               [{
                 "prometheus_url": "http://%%host%%:${local.ports["metrics"]}/metrics",
                 "namespace": "${local.name}",
-                "metrics": [ "*" ]
+                "metrics": [ "*" ],
+                "type_overrides": {
+                  "ssl_days_to_expire_total":"gauge",
+                  "ssl_days_to_expire_created":"gauge" 
+                },
+                "send_distribution_buckets": true
               }]
         spec:
           containers:
