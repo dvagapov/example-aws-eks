@@ -1,138 +1,105 @@
-
-# Example deployment using the [bastianbretagne/sosafe-dummy-app:0.0.1](https://github.com/sosafe-site-reliability-engineering/dummy-app)
-resource "kubernetes_deployment" "example" {
-  metadata {
-    name = "terraform-example"
-		namespace = ""
-    labels = {
-      app = "dummy-app"
-    }
-  }
-
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "dummy-app"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "dummy-app"
-        }
-				annotations = {
-					"ad.datadoghq.com/dummy.checks" = {
-						"openmetrics": {
-							"init_config" = [],
-							"instances" = "[{openmetrics_endpoint:}']"
-						}
-					} 
-
-				}
-      }
-
-      spec {
-        container {
-          image = "bastianbretagne/sosafe-dummy-app:0.0.2"
-          name  = "dummy"
-          port {
-							name = "metrics"
-							container_port = "8000"
-					}
-
-          resources {
-            limits = {
-              cpu    = "200m"
-              memory = "256Mi"
-            }
-            requests = {
-              cpu    = "10m"
-              memory = "50Mi"
-            }
-          }
-
-          liveness_probe {
-            http_get {
-              path = "/"
-              port = 80
-
-              http_header {
-                name  = "X-Custom-Header"
-                value = "Awesome"
-              }
-            }
-
-            initial_delay_seconds = 3
-            period_seconds        = 3
-          }
-        }
-      }
-    }
-  }
+resource "kubectl_manifest" "dummy_ns" {
+  yaml_body = <<-YAML
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      labels:
+        name: ${local.namespace}
+      name: ${local.namespace}
+  YAML
 }
 
-resource "kubernetes_horizontal_pod_autoscaler_v2" "example" {
-  metadata {
-    name = "test"
-		namespace = "test"
-  }
+resource "kubectl_manifest" "dummy_app" {
+  yaml_body = <<-YAML
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${local.name}
+      namespace: ${local.namespace}
+      labels:
+        app: ${local.name}
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: ${local.name}
+      template:
+        metadata:
+          labels:
+            app: ${local.name}
+          annotations:
+            ad.datadoghq.com/${local.name}.check_names: '["openmetrics"]'
+            ad.datadoghq.com/${local.name}.init_configs: '[{}]'
+            ad.datadoghq.com/${local.name}.instances: |-
+              [{
+                "prometheus_url": "http://%%host%%:${local.ports["metrics"]}/metrics",
+                "namespace": "${local.name}",
+                "metrics": [ "*" ]
+              }]
+        spec:
+          containers:
+          - name: ${local.name}
+            image: bastianbretagne/sosafe-dummy-app:${local.version}
+            imagePullPolicy: IfNotPresent
+            ports:
+              - containerPort: ${local.ports["metrics"]}
+                name: metrics
+                protocol: TCP
+              - containerPort: ${local.ports["http"]}
+                name: http
+                protocol: TCP
+            resources:
+              requests:
+                cpu: ${local.requests["cpu"]}
+                memory: ${local.requests["memory"]}
+              limits:
+                cpu: ${local.limits["cpu"]}
+                memory: ${local.limits["memory"]}
+            livenessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /metrics
+                port: metrics
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 10
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /metrics
+                port: metrics
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 10
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: ${local.name}
+            topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app: ${local.name}
+        maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      nodeSelector:
+        kubernetes.io/arch: amd64
+  YAML
 
-  spec {
-    min_replicas = 1
-    max_replicas = 5
-
-    scale_target_ref {
-      kind = "Deployment"
-      name = "MyApp"
-    }
-
-    behavior {
-      scale_down {
-        stabilization_window_seconds = 300
-        select_policy                = "Min"
-        policy {
-          period_seconds = 120
-          type           = "Pods"
-          value          = 1
-        }
-
-        policy {
-          period_seconds = 310
-          type           = "Percent"
-          value          = 100
-        }
-      }
-      scale_up {
-        stabilization_window_seconds = 600
-        select_policy                = "Max"
-        policy {
-          period_seconds = 180
-          type           = "Percent"
-          value          = 100
-        }
-        policy {
-          period_seconds = 600
-          type           = "Pods"
-          value          = 5
-        }
-      }
-    }
-  }
-}
-
-resource "kubernetes_pod_disruption_budget_v1" "demo" {
-  metadata {
-    name = "demo"
-  }
-  spec {
-    max_unavailable = "20%"
-    selector {
-      match_labels = {
-        test = "MyExampleApp"
-      }
-    }
-  }
+  depends_on = [
+    kubectl_manifest.dummy_ns
+  ]
 }

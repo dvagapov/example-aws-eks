@@ -4,4 +4,5 @@ locals {
 	chart      = "datadog"
   repository = "https://helm.datadoghq.com"
   version    = "3.59.6"
+
 }

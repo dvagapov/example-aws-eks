@@ -52,14 +52,10 @@ Will be created:
 - local file [backend.tf](./tf/init-tf-configs/backend.tf) with info about backend
 
 ## Deploy AWS EKS
-The TF 
-```
-terraform init -backend-config="../env/dvagapov1a/backend.hcl"
-terraform plan -var-file=../env/dvagapov1a/values.tfvar
-terraform apply -var-file=../env/dvagapov1a/values.tfvar -auto-approve
-```
+The TF for deploy EKS cluster located in [./tf/aws_eks](./tf/aws_eks/).
+TF code use module [terraform-aws-eks v20.8.5](https://github.com/terraform-aws-modules/terraform-aws-eks/tree/v20.8.5)
 
-Apply usually takes ~15min. 
+TF apply usually takes ~15min. 
 Will be created:
 - VPC
 - EKS
@@ -72,6 +68,13 @@ Will be created:
   - Karpenter
     - NodeClass
     - NodePool
+```
+env=dvagapov1a
+
+terraform init -backend-config="../env/${env}/backend.hcl"
+terraform plan -var-file=../env/${env}/values.tfvar
+terraform apply -var-file=../env/${env}/values.tfvar -auto-approve
+```
 
 ### Verify EKS
 - Get EKS kubeconfig of our cluster and set k8s context to `dvagapov1a`
@@ -139,13 +142,14 @@ For deploying k8s application we going to use TF helm and kubernetes providers.
 The k8s credentials are using from `~/.kube/config`
 
 Now deploy addons
-``
+```
 cd ./tf/addons
+env=dvagapov1a
 
 // for do not store sensitive data in github
 export TF_VAR_datadog_api_key="<Your-API-Key>"
 
-terraform init -backend-config="../env/dvagapov1a/backend-addons.hcl"
+terraform init -backend-config="../env/${env}/backend-addons.hcl"
 terraform plan 
 terraform apply -auto-approve
 ```
@@ -192,3 +196,25 @@ kubectl exec ds/datadog-agent -n datadog -- agent status
 ```
 
 `agent status` returns detailed info. Need to check if there are no errors and logs/metrics are processed well.
+
+## Deploy applications
+Because we do not use gitOps, will deploy k8s applications using Terraform.
+All apps located in [apps dir](./tf/apps/) with sub-folders == k8s Namespace
+
+As example I prepared [dummy app](https://github.com/sosafe-site-reliability-engineering/dummy-app).
+It's simple app with expose port 8000 for the metrics.
+
+```
+cd ./tf/apps/bastian
+env=dvagapov1a
+
+terraform init -backend-config="../env/${env}/backend-apps.hcl"
+terraform apply -var-file=../../env/${env}/values.tfvar
+```
+
+### Verify Apps
+```
+kubectl get pods -n bastian  
+NAME                     READY   STATUS    RESTARTS   AGE
+dummy-597ff9bfb4-2q2s6   1/1     Running   0          14m
+```

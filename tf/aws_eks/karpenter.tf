@@ -110,12 +110,12 @@ resource "kubectl_manifest" "karpenter_ondemand_node_class" {
   ]
 }
 
-resource "kubectl_manifest" "karpenter_default_node_pool" {
+resource "kubectl_manifest" "karpenter_default_arm64_node_pool" {
   yaml_body = <<-YAML
     apiVersion: karpenter.sh/v1beta1
     kind: NodePool
     metadata:
-      name: default
+      name: default-arm46
     spec:
       template:
         metadata:
@@ -156,6 +156,78 @@ resource "kubectl_manifest" "karpenter_default_node_pool" {
               operator: In
               values:
                 - spot
+            - key: kubernetes.io/arch
+              operator: In
+              values: 
+                - arm64
+            - key: kubernetes.io/os
+              operator: In
+              values: 
+                - linux
+      disruption:
+        consolidationPolicy: WhenUnderutilized
+        expireAfter: 168h0m0s
+  YAML
+
+  depends_on = [
+    kubectl_manifest.karpenter_node_class
+  ]
+}
+
+resource "kubectl_manifest" "karpenter_default_amd64_node_pool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1beta1
+    kind: NodePool
+    metadata:
+      name: default-arm46
+    spec:
+      template:
+        metadata:
+          labels:
+            nodepool: spot
+            spot: "true"
+        spec:
+          kubelet: {}
+          nodeClassRef:
+            name: default
+          requirements:
+            - key: karpenter.k8s.aws/instance-category
+              operator: In
+              values:
+                - c
+                - m
+                - r
+                - i
+            - key: karpenter.k8s.aws/instance-cpu
+              operator: In
+              values:
+                - "4"
+                - "8"
+                - "12"
+                - "16"
+                - "32"
+                - "48"
+                - "64"
+            - key: karpenter.k8s.aws/instance-hypervisor
+              operator: In
+              values:
+                - nitro
+            - key: karpenter.k8s.aws/instance-generation
+              operator: Gt
+              values:
+                - "2"
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values:
+                - spot
+            - key: kubernetes.io/arch
+              operator: In
+              values: 
+                - amd64
+            - key: kubernetes.io/os
+              operator: In
+              values: 
+                - linux
       disruption:
         consolidationPolicy: WhenUnderutilized
         expireAfter: 168h0m0s

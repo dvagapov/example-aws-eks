@@ -1,3 +1,9 @@
+variable "cluster_name" {
+  type        = string
+  description = "k8s cluster name"
+  default     = "dvagapov1a"
+}
+
 variable "datadog_api_key" {
   type        = string
   description = "Datadog API Key"
