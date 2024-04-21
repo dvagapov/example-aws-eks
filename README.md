@@ -1,4 +1,26 @@
-# About this repo
+# AWS-EKS example
+**Table of Contents**
+
+- [AWS-EKS example](#aws-eks-example)
+  - [Pre-request](#pre-request)
+  - [Terraform backend](#terraform-backend)
+  - [Deploy AWS EKS](#deploy-aws-eks)
+    - [Verify EKS](#verify-eks)
+  - [Deploy addons](#deploy-addons)
+    - [Verify addons](#verify-addons)
+      - [Verify Datadog](#verify-datadog)
+      - [Verify Cert-manager](#verify-cert-manager)
+  - [Deploy applications](#deploy-applications)
+    - [Verify Apps](#verify-apps)
+  - [Deploy DD monitors](#deploy-dd-monitors)
+    - [Verify Monitors](#verify-monitors)
+  - [Tier-down](#tier-down)
+    - [Destroy Monitroing](#destroy-monitroing)
+    - [Destroy Apps](#destroy-apps)
+    - [Destroy Addons](#destroy-addons)
+    - [Destroy AWS EKS](#destroy-aws-eks)
+
+---
 
 ## Pre-request
 - install aws cli
@@ -36,7 +58,7 @@ aws configure set region eu-central-1 --profile terraform
 export AWS_PROFILE=terraform
 ```
 
-## Terraform init
+## Terraform backend
 First we need create TF backend
 We going to use TF module [tfstate-backend](https://registry.terraform.io/modules/cloudposse/tfstate-backend/aws/latest)
 
@@ -136,7 +158,7 @@ aws iam create-service-linked-role --aws-service-name spot.amazonaws.com || true
 }
 ```
 
-## Deploy addons (DD agent)
+## Deploy addons
 For deploying k8s application we going to use TF helm and kubernetes providers.
 The k8s credentials are using from `~/.kube/config`
 
@@ -156,9 +178,17 @@ terraform apply -auto-approve -var-file=../../env/${env}/values.tfvar
 Will be created:
 - DaemonSet DD-agent
 - Deploy DD-cluster-agent
+- Cert-manager
 
-### Verify DataDog
-Karpenter should create new nodes for Datadog agent.
+### Verify addons
+Karpenter should create new nodes for Datadog agent and cert-manager. 
+```
+kubectl get nodeclaims -owide
+NAME                  TYPE        ZONE            NODE                                          READY   AGE   CAPACITY   NODEPOOL        NODECLASS
+default-arm46-jlz2t   m5.xlarge   eu-central-1b   ip-10-0-4-225.eu-central-1.compute.internal   True    12h   spot       default-arm46   default
+```
+
+#### Verify DataDog
 ```
 kubectl get nodeclaims -owide
 NAME            TYPE         ZONE            NODE                                          READY   AGE     CAPACITY   NODEPOOL   NODECLASS
@@ -167,7 +197,7 @@ default-bq2dz   m6g.xlarge   eu-central-1b   ip-10-0-6-187.eu-central-1.compute.
 
 Let's check the DataDog namespace
 ```
-k get all -n datadog
+kubectl get all -n datadog
 NAME                                               READY   STATUS    RESTARTS   AGE
 pod/datadog-agent-cluster-agent-679dfdc799-cbpjc   1/1     Running   0          38m
 pod/datadog-agent-sxdrg                            3/3     Running   0          3m53s
@@ -195,6 +225,32 @@ kubectl exec ds/datadog-agent -n datadog -- agent status
 ```
 
 `agent status` returns detailed info. Need to check if there are no errors and logs/metrics are processed well.
+
+#### Verify Cert-manager
+
+```
+kubectl get all -n cert-manager
+NAME                                           READY   STATUS    RESTARTS   AGE
+pod/cert-manager-5c599f758d-fnbvg              1/1     Running   0          83m
+pod/cert-manager-cainjector-584f44558c-mbflb   1/1     Running   0          91m
+pod/cert-manager-webhook-76f9945d6f-bqzb2      1/1     Running   0          91m
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/cert-manager           ClusterIP   172.20.50.93    <none>        9402/TCP   91m
+service/cert-manager-webhook   ClusterIP   172.20.30.146   <none>        443/TCP    91m
+
+NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/cert-manager              1/1     1            1           91m
+deployment.apps/cert-manager-cainjector   1/1     1            1           91m
+deployment.apps/cert-manager-webhook      1/1     1            1           91m
+
+NAME                                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/cert-manager-5c599f758d              1         1         1       83m
+replicaset.apps/cert-manager-67b598c564              0         0         0       91m
+replicaset.apps/cert-manager-cainjector-584f44558c   1         1         1       91m
+replicaset.apps/cert-manager-webhook-76f9945d6f      1         1         1       91m
+```
+
 
 ## Deploy applications
 Because we do not use gitOps, will deploy k8s applications using Terraform.
@@ -238,7 +294,7 @@ Have to override `ssl_days_to_expire_*` metrics type, because [new ver of Openme
 
 For verify openmetrics is successfully pushed to Datadog server
 ```
-k exec -it -n datadog -c agent datadog-agent-85tf7 -- agent check openmetrics
+kubectl exec -it -n datadog -c agent datadog-agent-85tf7 -- agent check openmetrics
 ...
 === Series ===
 [
@@ -262,7 +318,7 @@ Running Checks
 ```
 There `datadog-agent-85tf7` is Datadog DS agent working on same node with our application `dummy`
 
-## Deploy DD monitors (alerts)
+## Deploy DD monitors
 We also want to use IaC for Monitoring using Terraform Datadog provider.
 For a bit simplify we created 2 modules
 - Module with [standard_monitor](./tf/monitoring/modules/standard_monitor/)
@@ -292,7 +348,6 @@ The usage of these standard_monitors
     - Critical 10 days
     - Warning 30 days
 
-### TF code fro create monitors
 ```
 cd ./tf/monitoring
 env=dvagapov1a
