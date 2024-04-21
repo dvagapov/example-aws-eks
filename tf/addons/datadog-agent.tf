@@ -1,10 +1,10 @@
 resource "helm_release" "datadog_agent" {
-  namespace  = local.namespace
+  namespace  = local.datadog.namespace
 	create_namespace    = true
-	name       = local.name
-	chart      = local.chart
-  repository = local.repository
-  version    = local.version
+	name       = local.datadog.name
+	chart      = local.datadog.chart
+  repository = local.datadog.repository
+  version    = local.datadog.version
 	wait       = false
 
 	values = [
@@ -22,9 +22,12 @@ resource "helm_release" "datadog_agent" {
         enabled: true
         useHostNetwork: true
         metricsProvider:
-          enabled: false
+          enabled: true
       kubeStateMetricsCore:
         enabled: true
+        labelsAsTags:
+          pod:
+            app: app
       hostVolumeMountPropagation: HostToContainer
       tags:
         - "cluster_name:${var.cluster_name}"
@@ -45,5 +48,10 @@ resource "helm_release" "datadog_agent" {
     name  = "datadog.apiKey"
     value = var.datadog_api_key
   }
-
+  
+  set_sensitive {
+    name  = "datadog.appKey"
+    value = var.datadog_app_key
+  }
+  
 }

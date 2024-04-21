@@ -3,8 +3,8 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "region" {
-  description = "The AWS region. Default region 'eu-central-1'"
+variable "environment" {
+  description = "The environment. Default region 'test'"
   type        = string
-  default     = "eu-central-1"
+  default     = "test"
 }

@@ -9,7 +9,7 @@ resource "kubectl_manifest" "dummy_ns" {
   YAML
 }
 
-resource "kubectl_manifest" "dummy_app" {
+resource "kubectl_manifest" "dummy_deployment" {
   yaml_body = <<-YAML
     apiVersion: apps/v1
     kind: Deployment
@@ -18,15 +18,21 @@ resource "kubectl_manifest" "dummy_app" {
       namespace: ${local.namespace}
       labels:
         app: ${local.name}
+        app.kubernetes.io/instance: ${local.name}
+        app.kubernetes.io/name: ${local.name}
     spec:
       replicas: 1
       selector:
         matchLabels:
           app: ${local.name}
+          app.kubernetes.io/instance: ${local.name}
+          app.kubernetes.io/name: ${local.name}
       template:
         metadata:
           labels:
             app: ${local.name}
+            app.kubernetes.io/instance: ${local.name}
+            app.kubernetes.io/name: ${local.name}
           annotations:
             ad.datadoghq.com/${local.name}.check_names: '["openmetrics"]'
             ad.datadoghq.com/${local.name}.init_configs: '[{}]'
@@ -106,5 +112,62 @@ resource "kubectl_manifest" "dummy_app" {
 
   depends_on = [
     kubectl_manifest.dummy_ns
+  ]
+}
+
+resource "kubectl_manifest" "dummy_pdb" {
+  yaml_body = <<-YAML
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      name: ${local.name}
+      namespace: ${local.namespace}
+      labels:
+        app: ${local.name}
+        app.kubernetes.io/instance: ${local.name}
+        app.kubernetes.io/name: ${local.name}
+    spec:
+      maxUnavailable: 10%
+      selector:
+        matchLabels:
+          app: ${local.name}
+          app.kubernetes.io/instance: ${local.name}
+          app.kubernetes.io/name: ${local.name}
+  YAML
+
+  depends_on = [
+    kubectl_manifest.dummy_app
+  ]
+}
+
+resource "kubectl_manifest" "dummy_hpa" {
+  yaml_body = <<-YAML
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: ${local.name}
+      namespace: ${local.namespace}
+      labels:
+        app: ${local.name}
+        app.kubernetes.io/instance: ${local.name}
+        app.kubernetes.io/name: ${local.name}
+    spec:
+      maxReplicas: 3
+      metrics:
+      - resource:
+          name: cpu
+          target:
+            averageUtilization: 65
+            type: Utilization
+        type: Resource
+      minReplicas: 1
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: ${local.name}
+  YAML
+
+  depends_on = [
+    kubectl_manifest.dummy_app
   ]
 }

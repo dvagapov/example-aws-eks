@@ -71,8 +71,7 @@ Will be created:
 ```
 env=dvagapov1a
 
-terraform init -backend-config="../env/${env}/backend.hcl"
-terraform plan -var-file=../env/${env}/values.tfvar
+terraform init -backend-config="../env/${env}/backend-eks.hcl"
 terraform apply -var-file=../env/${env}/values.tfvar -auto-approve
 ```
 
@@ -148,10 +147,10 @@ env=dvagapov1a
 
 // for do not store sensitive data in github
 export TF_VAR_datadog_api_key="<Your-API-Key>"
+export TF_VAR_datadog_app_key="<Your-APP-Key>"
 
 terraform init -backend-config="../env/${env}/backend-addons.hcl"
-terraform plan 
-terraform apply -auto-approve
+terraform apply -auto-approve -var-file=../../env/${env}/values.tfvar
 ```
 
 Will be created:
@@ -209,7 +208,7 @@ cd ./tf/apps/bastian
 env=dvagapov1a
 
 terraform init -backend-config="../env/${env}/backend-apps.hcl"
-terraform apply -var-file=../../env/${env}/values.tfvar
+terraform apply -auto-approve -var-file=../../env/${env}/values.tfvar
 ```
 
 ### Verify Apps
@@ -263,4 +262,96 @@ Running Checks
 ```
 There `datadog-agent-85tf7` is Datadog DS agent working on same node with our application `dummy`
 
-## 
+## Deploy DD monitors (alerts)
+We also want to use IaC for Monitoring using Terraform Datadog provider.
+For a bit simplify we created 2 modules
+- Module with [standard_monitor](./tf/monitoring/modules/standard_monitor/)
+  - CPU usage
+  - Memory usage
+  - Deployment/StatefulSet (desired - avaliable replicas)
+  - ..
+- Module [monitor](./tf/monitoring/modules/monitor/) for Standartize monitors info
+
+The usage of these standard_monitors
+- [addons_standard_monitors.tf](./tf/monitoring/addons_standard_monitors.tf)
+  - aws-vpc-cni
+  - coredns
+  - karpenter
+  - datadog
+  - datadog-agent-cluster-agent
+  - kube-proxy
+  - ebs-csi-node
+  - ebs-csi-controller
+  - cert-manager
+- [apps_standard_monitors.tf](./tf/monitoring/apps_standard_monitors.tf)
+  - dummy
+- Non standard monitors located in folder [monitoring](./tf/monitoring/)
+  - [cluster.tf](./tf/monitoring/cluster.tf) -> monitor for Pending pods
+  - [ssl-expiration.tf](./tf/monitoring/ssl-expiration.tf) -> monitor using add `dummy` for alert then SSL-certificate close to expiration date 
+    - Query logic: `SSL_days_total - to_days(Current_TS - SSL_cert_created_TS)`
+    - Critical 10 days
+    - Warning 30 days
+
+### TF code fro create monitors
+```
+cd ./tf/monitoring
+env=dvagapov1a
+
+// for do not store sensitive data in github
+export TF_VAR_datadog_api_key="<Your-API-Key>"
+export TF_VAR_datadog_app_key="<Your-APP-Key>"
+
+terraform init -backend-config="../env/${env}/backend-monitoring.hcl"
+terraform apply -auto-approve -var-file=../env/${env}/values.tfvar
+```
+
+### Verify Monitors
+The easiest way to verify monitors is using [Datadog console](https://app.datadoghq.eu/monitors/manage?q=tag%3A%22owner%3Advagapov%22&order=desc&sort=name)
+
+
+## Tier-down
+Because all resources was created by Terraform we can destroy created resources using terraform flag `--destroy`.
+You should destroy resources in the backward order
+- Datadog Monitoring
+- It's recommended to destroy Apps/Addons separately if they creating some resources outside kubernetes.
+- Destroy AWS EKS
+
+### Destroy Monitroing
+```
+cd ./tf/monitoring
+env=dvagapov1a
+
+// for do not store sensitive data in github
+export TF_VAR_datadog_api_key="<Your-API-Key>"
+export TF_VAR_datadog_app_key="<Your-APP-Key>"
+
+terraform init -backend-config="../env/${env}/backend-monitoring.hcl"
+terraform apply -var-file=../env/dvagapov1a/values.tfvar --destroy
+```
+
+### Destroy Apps
+```
+cd ./tf/apps
+env=dvagapov1a
+
+terraform init -backend-config="../env/${env}/backend-apps.hcl"
+terraform apply -var-file=../../env/${env}/values.tfvar --destroy
+```
+
+### Destroy Addons
+```
+cd ./tf/addons
+env=dvagapov1a
+
+terraform init -backend-config="../env/${env}/backend-addons.hcl"
+terraform apply -var-file=../../env/${env}/values.tfvar --destroy
+```
+
+### Destroy AWS EKS
+```
+cd ./tf/aws_eks
+env=dvagapov1a
+
+terraform init -backend-config="../env/${env}/backend-eks.hcl"
+terraform apply -var-file=../../env/${env}/values.tfvar --destroy
+```
