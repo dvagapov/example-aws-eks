@@ -4,61 +4,61 @@
 locals {
   addon_monitoring = {
     aws-vpc-cni = {
-      monitoring_enabled    = true
-      name                  = "aws-node"
-      deployments           = []
-      daemonsets            = ["aws-node"]
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      name               = "aws-node"
+      deployments        = []
+      daemonsets         = ["aws-node"]
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     coredns = {
-      monitoring_enabled    = true
-      deployments           = ["coredns"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = ["coredns"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     karpenter = {
-      monitoring_enabled    = true
-      deployments           = ["karpenter"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = ["karpenter"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     datadog = {
-      monitoring_enabled    = true
-      deployments           = []
-      daemonsets            = ["datadog-agent"]
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = []
+      daemonsets         = ["datadog-agent"]
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     datadog-agent-cluster-agent = {
-      monitoring_enabled    = true
-      deployments           = ["datadog-agent-cluster-agent"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = ["datadog-agent-cluster-agent"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     kube-proxy = {
-      monitoring_enabled    = true
-      deployments           = []
-      daemonsets            = ["kube-proxy"]
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = []
+      daemonsets         = ["kube-proxy"]
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     ebs-csi-node = {
-      monitoring_enabled    = true
-      deployments           = []
-      daemonsets            = ["ebs-csi-node"]
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = []
+      daemonsets         = ["ebs-csi-node"]
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     ebs-csi-controller = {
-      monitoring_enabled    = true
-      deployments           = ["ebs-csi-controller"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = true
+      deployments        = ["ebs-csi-controller"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     cert-manager = {
       monitoring_enabled    = true
@@ -69,18 +69,18 @@ locals {
     }
     // Below possible useful addons for k8s any clusters
     metrics-server = {
-      monitoring_enabled    = false
-      deployments           = ["metrics-server"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = false
+      deployments        = ["metrics-server"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
     external-dns = {
-      monitoring_enabled    = false
-      deployments           = ["external-dns"]
-      daemonsets            = []
-      statefulsets          = []
-      runbook_wiki          = "https://Link-to-my-wiki/runbook_id"
+      monitoring_enabled = false
+      deployments        = ["external-dns"]
+      daemonsets         = []
+      statefulsets       = []
+      runbook_wiki       = "https://Link-to-my-wiki/runbook_id"
     }
   }
 }

@@ -16,7 +16,7 @@ module "karpenter" {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
 
-  tags = merge(local.tags,var.tags)
+  tags = merge(local.tags, var.tags)
 }
 
 ################################################################################

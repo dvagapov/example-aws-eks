@@ -1,5 +1,5 @@
 locals {
-  owner = "dvagapov"
+  owner                = "dvagapov"
   cluster_service_name = "cluster"
   cluster_monitors = {
     all-pods-pending = {

@@ -4,7 +4,7 @@
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-	version = "v20.8.5"
+  version = "v20.8.5"
 
   cluster_name                   = var.cluster_name
   cluster_version                = var.cluster_version
@@ -42,7 +42,7 @@ module "eks" {
     }
     kube-proxy = {}
     vpc-cni    = {}
-		aws-ebs-csi-driver = {
+    aws-ebs-csi-driver = {
       service_account_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.cluster_name}-ebs-csi-controller"
     }
   }
@@ -69,11 +69,11 @@ module "eks" {
   }
 
   tags = merge(local.tags, var.tags,
-	{
-    # NOTE - if creating multiple security groups with this module, only tag the
-    # security group that Karpenter should utilize with the following tag
-    # (i.e. - at most, only one security group should have this tag in your account)
-    "karpenter.sh/discovery" = var.cluster_name
+    {
+      # NOTE - if creating multiple security groups with this module, only tag the
+      # security group that Karpenter should utilize with the following tag
+      # (i.e. - at most, only one security group should have this tag in your account)
+      "karpenter.sh/discovery" = var.cluster_name
   })
 }
 

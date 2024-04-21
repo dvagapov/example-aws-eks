@@ -1,13 +1,13 @@
 resource "helm_release" "datadog_agent" {
-  namespace  = local.datadog.namespace
-	create_namespace    = true
-	name       = local.datadog.name
-	chart      = local.datadog.chart
-  repository = local.datadog.repository
-  version    = local.datadog.version
-	wait       = false
+  namespace        = local.datadog.namespace
+  create_namespace = true
+  name             = local.datadog.name
+  chart            = local.datadog.chart
+  repository       = local.datadog.repository
+  version          = local.datadog.version
+  wait             = false
 
-	values = [
+  values = [
     <<-EOT
     clusterName: ${var.cluster_name}
     datadog:
@@ -48,10 +48,10 @@ resource "helm_release" "datadog_agent" {
     name  = "datadog.apiKey"
     value = var.datadog_api_key
   }
-  
+
   set_sensitive {
     name  = "datadog.appKey"
     value = var.datadog_app_key
   }
-  
+
 }

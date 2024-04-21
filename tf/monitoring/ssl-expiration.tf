@@ -2,7 +2,7 @@ locals {
   dummy_service_name = "dummy"
   dummy_runbook_wiki = "https://Link-to-my-wiki/runbook_id"
   dummy_monitors = {
-     ssl_expiration = {
+    ssl_expiration = {
       name    = "SSL certificate {{cert_name.name}} is expired in fqdn {{fqdn.name}} in {{value}} days"
       query   = "min(last_30m):max:dummy.ssl_days_to_expire_total{owner:${var.owner}} by {cluster_name,cert_name,fqdn} - (max:cert_manager.clock_time{owner:${var.owner}} by {cluster_name} - max:dummy.ssl_days_to_expire_created{owner:${var.owner}} by {cluster_name,cert_name,fqdn}) / 86400 < 10"
       message = "SSL certificate '{{cert_name.name}}' will expired in fqdn '{{fqdn.name}}' in '{{value}}' days \n This alert is gererated by the application `dummy` in k8s cluster {{cluster_name.name}}."
@@ -17,10 +17,10 @@ locals {
 }
 
 module "monitor_dummy" {
-  source             = "./modules/monitor"
-  for_each           = local.dummy_monitors
-  service            = local.dummy_service_name
-  runbook_wiki       = try(local.dummy_runbook_wiki, "")
+  source       = "./modules/monitor"
+  for_each     = local.dummy_monitors
+  service      = local.dummy_service_name
+  runbook_wiki = try(local.dummy_runbook_wiki, "")
 
   name               = each.value.name
   type               = try(each.value.type, null)
